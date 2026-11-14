@@ -25,6 +25,14 @@ REQUIRED_TEXT = [
 ]
 FORBIDDEN_TEXT = ["Nelnet", "gitshark", "QLAN", "shark-ci-server", "dbUnit", "QuantasNet"]
 SHARK_NG_TABLE_DEMO = "https://quantas.github.io/shark-ng-table/"
+# Project Pages sites under the Quantas account used to be served at
+# www.quantasnet.com/<repo>/ through the old user site's custom domain. Each
+# old path keeps working through a redirect stub to the site's github.io URL.
+PROJECT_REDIRECTS = {
+    "shark-ng-table": SHARK_NG_TABLE_DEMO,
+    "shark-ng-table-samples": "https://quantas.github.io/shark-ng-table-samples/",
+    "wow-forever-atlas": "https://quantas.github.io/wow-forever-atlas/",
+}
 
 # (tag, attribute) pairs that make the browser fetch something.
 RESOURCE_ATTRS = {("link", "href"), ("script", "src"), ("img", "src"), ("source", "src")}
@@ -205,15 +213,17 @@ class SiteTests(unittest.TestCase):
             leftover = COLOR_LITERAL.findall(strip_token_blocks(f.read_text(encoding="utf-8")))
             self.assertEqual(leftover, [], f.relative_to(SITE))
 
-    def test_shark_ng_table_redirect(self):
-        path = SITE / "shark-ng-table" / "index.html"
-        self.assertTrue(path.is_file())
-        page = parse(path)
-        refresh = [a for a in page.find("meta") if (a.get("http-equiv") or "").lower() == "refresh"]
-        self.assertEqual(refresh[0].get("content"), f"0; url={SHARK_NG_TABLE_DEMO}")
-        canonical = [a for a in page.find("link") if a.get("rel") == "canonical"]
-        self.assertEqual(canonical[0].get("href"), SHARK_NG_TABLE_DEMO)
-        self.assertIn(SHARK_NG_TABLE_DEMO, {a.get("href") for a in page.find("a")})
+    def test_project_redirects(self):
+        for name, target in PROJECT_REDIRECTS.items():
+            with self.subTest(name=name):
+                path = SITE / name / "index.html"
+                self.assertTrue(path.is_file())
+                page = parse(path)
+                refresh = [a for a in page.find("meta") if (a.get("http-equiv") or "").lower() == "refresh"]
+                self.assertEqual(refresh[0].get("content"), f"0; url={target}")
+                canonical = [a for a in page.find("link") if a.get("rel") == "canonical"]
+                self.assertEqual(canonical[0].get("href"), target)
+                self.assertIn(target, {a.get("href") for a in page.find("a")})
 
     def test_404(self):
         path = SITE / "404.html"
